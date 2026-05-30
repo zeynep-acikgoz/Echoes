@@ -1,0 +1,320 @@
+﻿@using Echoes.Models
+@model IEnumerable<Memories>
+@{
+ViewData["Title"] = "Memories";
+var currentStatus = ViewBag.CurrentStatus != null
+? (MemoryStatus)ViewBag.CurrentStatus
+: MemoryStatus.Goods;
+}
+
+<style>
+    /* --- Temel Tasarım ve Hover Efektleri --- */
+    .tab-container { background: #e2e8f0; border-radius: 12px; padding: 6px; display: inline-flex; gap: 8px; }
+    .tab-item { padding: 10px 24px; border-radius: 12px; text-decoration: none; color: #4a4a4a; font-weight: 600; transition: 0.2s; }
+    .tab-item.active { background: #a8dadc; color: #1d3557 !important; }
+
+    .btn-main {
+        background: #1d3557; color: white; border-radius: 12px; padding: 12px 28px;
+        border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease;
+    }
+    .btn-main:hover { background: #000; transform: scale(1.05); color: white; }
+
+    /* Başlık ve Placeholder Hiyerarşisi */
+    .form-label-custom { font-size: 1rem; font-weight: 700; color: #2d3436; margin-bottom: 2px; display: block; padding-left: 4px; }
+    .custom-input { background: #f8fafc !important; border: 2px solid #f1f5f9 !important; border-radius: 12px !important; padding: 12px !important; font-size: 0.95rem; }
+    .custom-input::placeholder { font-size: 0.85rem; color: #b2bec3; font-weight: 400; }
+    .custom-input:focus { border-color: #a8dadc !important; box-shadow: 0 0 0 4px rgba(168, 218, 220, 0.2) !important; outline: none; }
+
+    /* --- Seçim Kutusu ve Etiketler --- */
+    .selection-box {
+        min-height: 48px; background: #ffffff; border: 1px solid #e2e8f0;
+        border-radius: 12px; padding: 8px; display: flex; flex-wrap: wrap; gap: 6px;
+        margin-bottom: 12px;
+    }
+    .tag-pool { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .tag-chip {
+        display: inline-flex; align-items: center; padding: 6px 14px;
+        border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+        cursor: pointer; transition: 0.3s; border: none;
+    }
+
+    .c-blue { background-color: #e0f2fe; color: #0369a1; }
+    .c-teal { background-color: #ccfbf1; color: #0f766e; }
+    .c-purple { background-color: #f3e8ff; color: #7e22ce; }
+    .c-lila { background-color: #fae8ff; color: #a21caf; }
+
+    .tag-chip .remove-tag { margin-left: 8px; font-size: 1rem; opacity: 0.7; color: inherit; }
+
+    /* --- Inline Ekleme (Artı, X ve Tik) --- */
+    .inline-add-wrapper { display: inline-flex; align-items: center; }
+    .inline-tag-input {
+        width: 0; opacity: 0; padding: 0; border: none; outline: none;
+        background: #f1f5f9; border-radius: 20px; font-size: 0.8rem;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .inline-tag-input.active {
+        width: 120px; opacity: 1; padding: 4px 12px; border: 1px solid #a8dadc; margin-right: 5px;
+    }
+
+    .add-tag-btn {
+        width: 32px; height: 32px; border-radius: 50%;
+        background: #f1f5f9; border: 1px solid #e2e8f0; color: #64748b;
+        display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s;
+    }
+    .add-tag-btn.active { background: #ef4444 !important; color: white !important; transform: rotate(0deg); }
+    .add-tag-btn.valid-tag { background: #10b981 !important; color: white !important; }
+
+    /* Sağ Tık Menüsü */
+    .context-menu {
+        position: absolute; background: #fff; border: 1px solid #e2e8f0;
+        border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        z-index: 10000; display: none; padding: 5px 0; min-width: 120px;
+    }
+    .context-menu-item {
+        padding: 8px 12px; font-size: 0.8rem; color: #ef4444;
+        cursor: pointer; transition: 0.2s; font-weight: 600;
+    }
+    .context-menu-item:hover { background: #fee2e2; }
+
+    .italic-desc { font-style: italic; font-size: 0.75rem; color: #94a3b8; display: block; margin-top: 2px; margin-bottom: 8px; padding-left: 4px; }
+    .preview-img { width: 85px; height: 85px; border-radius: 12px; object-fit: cover; margin-right: 8px; margin-bottom: 8px; }
+    .camera-btn { width: 85px; height: 85px; border-radius: 12px; border: 2px dashed #e2e8f0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #94a3b8; }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="text-center mb-5">
+        <div class="tab-container shadow-sm">
+            <a href="/Memories?status=1" class="tab-item @(currentStatus == MemoryStatus.Goods ? "active" : "")">Goods</a>
+            <a href="/Memories?status=2" class="tab-item @(currentStatus == MemoryStatus.Bads ? "active" : "")">Bads</a>
+            <a href="/Memories?status=3" class="tab-item @(currentStatus == MemoryStatus.Pasts ? "active" : "")">Pasts</a>
+            <a href="/Memories?status=4" class="tab-item @(currentStatus == MemoryStatus.Ghosts ? "active" : "")">Ghosts</a>
+        </div>
+    </div>
+
+    <div class="glass-panel p-4 mb-5" style="border-radius: 12px; background: white; border: 1px solid #edf2f7;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div><h2 class="fw-bold mb-1">@currentStatus</h2><p class="text-muted small mb-0">Your story continues here...</p></div>
+            <button class="btn-main" id="openModalBtn"><i class="bi bi-plus-lg me-2"></i>Add memory</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addMemoryModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius: 24px; border:none; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+            <div class="modal-header border-0 px-4 pt-4">
+                <h4 class="fw-bold m-0">Create New @currentStatus.ToString().TrimEnd('s')</h4>
+                <button type="button" class="btn-close shadow-none" id="customXBtn"></button>
+            </div>
+            <div class="modal-body px-4 pb-4">
+                <form id="memoryForm">
+                    <div class="mb-4">
+                        <label class="form-label-custom">Title</label>
+                        <input type="text" class="form-control custom-input" placeholder="Give this memory a title..." required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label-custom">Content</label>
+                        <textarea class="form-control custom-input" rows="4" placeholder="Write down the echoes..." required></textarea>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Category</label>
+                            <span class="italic-desc">You can select multiple categories</span>
+                            <div class="selection-box" id="catSelectedBox"></div>
+                            <div class="tag-pool" id="catPool">
+                                <div class="tag-chip c-blue" onclick="moveToSelected(this, 'cat')">Travel</div>
+                                <div class="tag-chip c-teal" onclick="moveToSelected(this, 'cat')">Family</div>
+                                <div class="inline-add-wrapper">
+                                    <input type="text" class="inline-tag-input" placeholder="Type..." onkeypress="handleTagEnter(event, 'cat')">
+                                    <button type="button" class="add-tag-btn" onclick="toggleInlineInput(this)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">People</label>
+                            <span class="italic-desc">You can select multiple people</span>
+                            <div class="selection-box" id="pplSelectedBox"></div>
+                            <div class="tag-pool" id="pplPool">
+                                <div class="tag-chip c-purple" onclick="moveToSelected(this, 'ppl')">Myself</div>
+                                <div class="inline-add-wrapper">
+                                    <input type="text" class="inline-tag-input" placeholder="Name..." onkeypress="handleTagEnter(event, 'ppl')">
+                                    <button type="button" class="add-tag-btn" onclick="toggleInlineInput(this)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label-custom">Song</label>
+                        <span class="italic-desc">You can add a song URL from YouTube to set the mood</span>
+                        <input type="url" class="form-control custom-input" placeholder="Paste link here...">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label-custom">Photos</label>
+                        <span class="italic-desc">You can select multiple photos</span>
+                        <input type="file" id="fileInput" class="d-none" multiple accept="image/*">
+                        <div class="d-flex flex-wrap" id="imagePreviewArea">
+                            <div class="camera-btn" onclick="$('#fileInput').click()"><i class="bi bi-camera-fill fs-3"></i></div>
+                        </div>
+                    </div>
+
+                    <div class="text-end pt-3">
+                        <button type="button" class="btn text-muted fw-bold me-4" id="customCancelBtn">Cancel</button>
+                        <button type="submit" class="btn-main px-5">Save Memory</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="tagContextMenu" class="context-menu">
+    <div class="context-menu-item" id="deleteTagAction">
+        <i class="bi bi-trash3 me-2"></i>Delete Tag
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const memoryModal = new bootstrap.Modal(document.getElementById('addMemoryModal'));
+    let tagToDelete = null;
+
+    $('#openModalBtn').click(() => memoryModal.show());
+
+    // --- INLINE EKLEME SİSTEMİ ---
+    function toggleInlineInput(btn) {
+        const input = $(btn).siblings('.inline-tag-input');
+        const btnObj = $(btn);
+
+        if (input.val().trim().length > 0) {
+            // Yazı varsa onaylayıp ekle
+            const e = jQuery.Event("keypress");
+            e.key = "Enter";
+            input.trigger(e);
+        } else {
+            // Yazı yoksa aç/kapat yap
+            btnObj.toggleClass('active');
+            input.toggleClass('active');
+            if (input.hasClass('active')) {
+                input.focus();
+                btnObj.html('<i class="bi bi-x-lg"></i>'); // Kırmızı X
+            } else {
+                btnObj.html('+');
+            }
+        }
+    }
+
+    // Girdi takibi (Tik İşareti)
+    $(document).on('input', '.inline-tag-input', function() {
+        const btn = $(this).siblings('.add-tag-btn');
+        if ($(this).val().trim().length > 0) {
+            btn.addClass('valid-tag').html('<i class="bi bi-check-lg"></i>');
+        } else {
+            btn.removeClass('valid-tag');
+            if(btn.hasClass('active')) btn.html('<i class="bi bi-x-lg"></i>');
+        }
+    });
+
+    function handleTagEnter(event, type) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const input = $(event.target);
+            const val = input.val().trim();
+            if (val) {
+                const colorClass = ['c-blue', 'c-teal', 'c-purple', 'c-lila'][Math.floor(Math.random() * 4)];
+                const newTag = $(`<div class="tag-chip ${colorClass}" onclick="moveToSelected(this, '${type}')">${val}</div>`);
+                newTag.insertBefore(input.parent());
+                moveToSelected(newTag[0], type);
+
+                input.val('').removeClass('active');
+                input.siblings('.add-tag-btn').removeClass('active valid-tag').html('+');
+            }
+        }
+    }
+
+    // --- SAĞ TIK SİLME ---
+    $(document).on('contextmenu', '.tag-pool .tag-chip', function(e) {
+        e.preventDefault();
+        tagToDelete = $(this);
+        $('#tagContextMenu').css({ top: e.pageY, left: e.pageX }).fadeIn(200);
+    });
+
+    $(document).on("mousedown", function (e) {
+        if (!$(e.target).parents(".context-menu").length > 0) $(".context-menu").fadeOut(200);
+    });
+
+    $('#deleteTagAction').on('click', function() {
+        if (tagToDelete) {
+            const text = tagToDelete.text().trim();
+            tagToDelete.fadeOut(300, function() {
+                $(this).remove();
+                $(`.selection-box .tag-chip:contains('${text}')`).remove();
+            });
+        }
+        $(".context-menu").fadeOut(200);
+    });
+
+    // --- TAŞIMA MANTIĞI ---
+    function moveToSelected(el, type) {
+        const targetBox = type === 'cat' ? '#catSelectedBox' : '#pplSelectedBox';
+        const text = $(el).text().trim();
+        if ($(`${targetBox} .tag-chip:contains('${text}')`).length > 0) return;
+
+        const newChip = $(el).clone();
+        newChip.append('<span class="bi bi-x-circle-fill remove-tag"></span>');
+        newChip.attr('onclick', '').attr('oncontextmenu', 'return false;');
+        newChip.find('.remove-tag').on('click', function(e) {
+            e.stopPropagation();
+            const parent = $(this).parent();
+            const chipText = parent.text().trim();
+            $(`.tag-pool .tag-chip`).each(function() {
+                if ($(this).text().trim() === chipText) $(this).show();
+            });
+            parent.remove();
+        });
+        $(targetBox).append(newChip);
+        $(el).hide();
+    }
+
+    // Fotoğraf ve Kapatma
+    $('#fileInput').change(function() {
+        const files = this.files;
+        for (let i = 0; i < files.length; i++) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                $('<img />', { src: e.target.result, class: 'preview-img', alt: 'preview' }).insertBefore('.camera-btn');
+            }
+            reader.readAsDataURL(files[i]);
+        }
+    });
+
+    function closeConfirm() {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "Unsaved changes will be lost.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#1d3557',
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                memoryModal.hide();
+                $('#memoryForm')[0].reset();
+                $('.preview-img').remove();
+                $('.selection-box').empty();
+                $('.tag-pool .tag-chip').show();
+                $('.inline-tag-input').val('').removeClass('active');
+                $('.add-tag-btn').removeClass('active valid-tag').html('+');
+            }
+        });
+    }
+
+    $('#customXBtn, #customCancelBtn').click((e) => { e.preventDefault(); closeConfirm(); });
+</script>
