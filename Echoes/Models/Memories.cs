@@ -34,4 +34,6 @@ public class Memories
     public DateTime CreatedDate { get; set; } = DateTime.Now;
     
     public MemoryStatus Status { get; set; }
+    
+    public string? PhotoPath { get; set; } 
 }
