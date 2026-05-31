@@ -1,0 +1,551 @@
+﻿@{
+    ViewData["Title"] = "Mood Tracker";
+}
+
+<style>
+    /* --- Genel Tasarım --- */
+    .glass-panel { background: white; border: 1px solid #edf2f7; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); }
+    
+    /* --- Takvim (Sol Taraf) --- */
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 10px; }
+    .calendar-nav-btn { background: #f8fafc; border: none; width: 36px; height: 36px; border-radius: 50%; color: #64748b; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .calendar-nav-btn:hover { background: #e2e8f0; color: #1d3557; }
+    
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; }
+    .day-name { font-size: 0.8rem; font-weight: 700; color: #94a3b8; margin-bottom: 10px; text-transform: uppercase; }
+    
+    .day-cell { 
+        aspect-ratio: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+        font-size: 0.95rem; font-weight: 500; color: #64748b; cursor: pointer; transition: all 0.2s;
+        position: relative; /* Baloncuk için gerekli */
+    }
+    .day-cell:not(.empty-day):not(.has-mood):hover { background-color: #f1f5f9; transform: scale(1.1); }
+    
+    /* Pastel Renkli Dolgulu Günler */
+    .day-cell.has-mood { font-weight: 800 !important; color: white !important; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .mood-1 { background-color: #c084fc !important; } /* Awful - Koyu Mor */
+    .mood-2 { background-color: #fca5a5 !important; } /* Bad - Somon */
+    .mood-3 { background-color: #fde047 !important; color: #713f12 !important; } /* Meh - Sarı (Yazı rengi koyu) */
+    .mood-4 { background-color: #7dd3fc !important; } /* Good - Turkuaz */
+    .mood-5 { background-color: #86efac !important; color: #14532d !important; } /* Rad - Yeşil (Yazı rengi koyu) */
+
+    .mood-clear { background-color: #f1f5f9 !important; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; }
+    .mood-clear:hover { background-color: #e2e8f0 !important; border-color: #94a3b8; }
+
+    .empty-day { visibility: hidden; }
+
+    /* --- Inline Renk Seçim Baloncuğu --- */
+    .mood-popup {
+        position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%) scale(0.9);
+        background: white; padding: 6px; border-radius: 30px; box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        display: none; gap: 6px; z-index: 100; opacity: 0; transition: all 0.2s ease-out;
+        border: 1px solid #edf2f7;
+    }
+    .mood-popup.show { display: flex; opacity: 1; transform: translateX(-50%) scale(1); }
+    .mood-dot {
+        width: 24px; height: 24px; border-radius: 50%; cursor: pointer; transition: 0.2s;
+    }
+    .mood-dot:hover { transform: scale(1.2); }
+
+    /* --- Sağ Taraf (Analitik) --- */
+    .analytics-select { background: #f8fafc; border: 2px solid #f1f5f9; border-radius: 12px; padding: 8px 16px; font-weight: 600; color: #1d3557; outline: none; cursor: pointer; }
+    .analytics-select:focus { border-color: #a8dadc; }
+
+    /* Not ekleme butonu tasarımı */
+    .mood-note { background-color: #f1f5f9 !important; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; }
+    .mood-note:hover { background-color: #e2e8f0 !important; border-color: #94a3b8; }
+
+    /* Günün köşesinde çıkacak minik yapışkan not ikonu */
+    /* Günün köşesinde çıkacak minik yapışkan not ikonu */
+    .note-indicator {
+        position: absolute; top: -4px; right: -4px; font-size: 0.75rem; color: #475569;
+        background: #fde047; border-radius: 50%; width: 18px; height: 18px;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; z-index: 10;
+    }
+
+    /* Özel Yuvarlak Tooltip (Baloncuk) Tasarımı */
+    .note-indicator::after {
+        content: attr(data-custom-title);
+        position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(10px);
+        background: #1d3557; color: #fff; padding: 10px 14px; border-radius: 16px;
+        font-size: 0.8rem; font-weight: 500; white-space: pre-wrap; width: max-content; max-width: 220px;
+        text-align: left; opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.15); line-height: 1.5;
+    }
+    /* Baloncuğun altındaki minik ok işareti */
+    .note-indicator::before {
+        content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(10px);
+        border-width: 6px; border-style: solid; border-color: #1d3557 transparent transparent transparent;
+        opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; z-index: 1000;
+    }
+
+    /* Fareyle üzerine gelince (Hover) baloncuğun yumuşakça belirmesi */
+    .note-indicator:hover::after { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(-6px); }
+    .note-indicator:hover::before { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(-1px); }
+
+
+    /* Analitik Sağ Taraf Kartları */
+    .stat-card {
+        display: flex; justify-content: space-between; align-items: center;
+        background: #f8fafc; padding: 12px 16px; border-radius: 12px;
+        transition: 0.2s ease; border: 1px solid #f1f5f9; cursor: default;
+    }
+    .stat-card:hover { transform: translateX(6px); background: #f1f5f9; border-color: #e2e8f0; }
+    .stat-dot { width: 14px; height: 14px; border-radius: 50%; margin-right: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    
+    </style>
+
+
+
+
+<div class="container-fluid py-4">
+    <!-- Üst Başlık -->
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold mb-1">Moods</h2>
+            <p class="text-muted small mb-0">Track your inner weather...</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- SOL PANEL: TAKVİM -->
+        <div class="col-lg-7">
+            <div class="glass-panel p-4 h-100">
+                <div class="calendar-header">
+                    <button class="calendar-nav-btn" id="prevMonth"><i class="bi bi-chevron-left"></i></button>
+                    <h4 class="fw-bold m-0" id="currentMonthYear">May 2026</h4>
+                    <button class="calendar-nav-btn" id="nextMonth"><i class="bi bi-chevron-right"></i></button>
+                </div>
+
+                <div class="calendar-grid mb-2">
+                    <div class="day-name">Sun</div><div class="day-name">Mon</div><div class="day-name">Tue</div>
+                    <div class="day-name">Wed</div><div class="day-name">Thu</div><div class="day-name">Fri</div><div class="day-name">Sat</div>
+                </div>
+                
+                <!-- Günler JS ile buraya basılacak -->
+                <div class="calendar-grid" id="calendarDays"></div>
+            </div>
+        </div>
+
+        <!-- SAĞ PANEL: ANALİTİK -->
+        <div class="col-lg-5">
+            <div class="glass-panel p-4 h-100 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold m-0">Insights</h5>
+                    <select class="analytics-select" id="analyticsPeriod">
+                        <option value="all">All Time</option>
+                        <option value="current">May 2026</option>
+                    </select>
+                </div>
+                
+                <div id="moodSummaryBox" class="p-4 mb-4 mt-3" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; display: none;">
+                    <div class="d-flex align-items-center mb-2">
+                        <i id="summaryIcon" class="bi bi-stars fs-3 me-3"></i>
+                        <h5 class="fw-bold m-0 text-dark" id="summaryTitle">Monthly Insight</h5>
+                    </div>
+                    <p class="text-muted m-0" id="summaryText" style="line-height: 1.6; font-size: 0.95rem;"></p>
+                </div>
+                
+                <div class="flex-grow-1 d-flex w-100 mt-2">
+                    <div class="row w-100 align-items-center m-0">
+                        
+                        <!-- YENİ SOL TARAF: Detaylı Analiz Listesi -->
+                        <!-- Sağından biraz boşluk (pe-3) bıraktık ki grafiğe yapışmasın -->
+                        <div class="col-sm-6 p-0 pe-3">
+                            <div id="moodStatsList" class="d-flex flex-column gap-2">
+                                <!-- JS ile yüzdeler buraya otomatik dizilecek -->
+                            </div>
+                        </div>
+
+                        <!-- YENİ SAĞ TARAF: Halka Grafik ve Ortasındaki Yazı -->
+                        <div class="col-sm-6 position-relative text-center p-0">
+                            <div style="position: relative; height:200px; width:100%">
+                                <canvas id="moodChart"></canvas>
+                            </div>
+                            <div class="position-absolute top-50 start-50 translate-middle text-center" style="pointer-events: none;">
+                                <h2 class="fw-bold m-0 text-dark" id="totalDaysText" style="line-height: 1;">0</h2>
+                                <small class="text-muted fw-bold" style="font-size:0.75rem; letter-spacing: 1px;">DAYS</small>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+<script>
+    let currentDate = new Date(); // Güncel tarihi al
+    let activePopupDay = null; // Hangi günün pop-up'ı açık tutmak için
+
+    $(document).ready(function() {
+        renderCalendar(currentDate);
+
+        // Ay değiştirme butonları
+        $('#prevMonth').click(() => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar(currentDate);
+        });
+
+        $('#nextMonth').click(() => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar(currentDate);
+        });
+
+        // Ekranda boş bir yere tıklayınca baloncukları kapat
+        $(document).click(function(e) {
+            if (!$(e.target).closest('.day-cell').length) {
+                $('.mood-popup').removeClass('show');
+                activePopupDay = null;
+            }
+        });
+    });
+
+    // Takvimi Çizen Fonksiyon
+    function renderCalendar(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        $('#currentMonthYear').text(`${monthNames[month]} ${year}`);
+        
+        // Analitik dropdown'ını da güncelle (İleride kullanacağız)
+        $('#analyticsPeriod option[value="current"]').text(`${monthNames[month]} ${year}`);
+        $('#analyticsPeriod').val('current');
+
+        const firstDay = new Date(year, month, 1).getDay(); // Ayın ilk günü hangi güne denk geliyor?
+        const daysInMonth = new Date(year, month + 1, 0).getDate(); // Bu ay kaç çekiyor?
+        
+        const calendarDays = $('#calendarDays');
+        calendarDays.empty();
+
+        // Önceki aydan kalan boşlukları doldur
+        for (let i = 0; i < firstDay; i++) {
+            calendarDays.append('<div class="day-cell empty-day"></div>');
+        }
+
+        // Günleri bas
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            
+            // Gün HTML'i ve İçindeki Gizli Baloncuk
+            // Gün HTML'i ve İçindeki Gizli Baloncuk
+            const dayHtml = `
+                <div class="day-cell" data-date="${dateString}" id="day-${dateString}">
+                    ${i}
+                    <div class="mood-popup">
+                        <div class="mood-dot mood-1" onclick="saveMood(event, '${dateString}', 1)"></div>
+                        <div class="mood-dot mood-2" onclick="saveMood(event, '${dateString}', 2)"></div>
+                        <div class="mood-dot mood-3" onclick="saveMood(event, '${dateString}', 3)"></div>
+                        <div class="mood-dot mood-4" onclick="saveMood(event, '${dateString}', 4)"></div>
+                        <div class="mood-dot mood-5" onclick="saveMood(event, '${dateString}', 5)"></div>
+                        <div class="mood-dot mood-note" onclick="openNoteModal(event, '${dateString}')"><i class="bi bi-journal-text text-muted" style="font-size: 0.9rem; line-height: 0;"></i></div>
+                        <div class="mood-dot mood-clear" onclick="saveMood(event, '${dateString}', 0)"><i class="bi bi-x text-muted" style="font-size: 1.2rem; line-height: 0;"></i></div>
+                    </div>
+                </div>
+            `;
+            calendarDays.append(dayHtml);
+        }
+
+        // Günleri bastıktan sonra veritabanından renkleri (moodları) çek
+        fetchMoods(year, month + 1);
+
+        // Sayfa yüklendiğinde veya ay değiştiğinde grafiği de o aya göre güncelle
+        if ($('#analyticsPeriod').val() === 'current') {
+            updateChart(year, month + 1);
+        } else {
+            updateChart();
+        }
+    }
+
+    // Veritabanından O Ayın Modlarını Çekme
+    function fetchMoods(year, month) {
+        $.get(`/Moods/GetMoodsForMonth?year=${year}&month=${month}`, function(data) {
+            data.forEach(item => {
+                const dayDate = item.date.split('T')[0];
+                const cell = $(`#day-${dayDate}`);
+                if (cell.length) {
+                    cell.removeClass('has-mood mood-1 mood-2 mood-3 mood-4 mood-5');
+                    cell.addClass(`has-mood mood-${item.level}`);
+
+                    // Not var mı kontrolü// Not var mı kontrolü
+                    cell.attr('data-note', item.note || '');
+                    cell.find('.note-indicator').remove();
+                    if (item.note && item.note.trim() !== '') {
+                        // DİKKAT: title yerine data-custom-title kullandık ve onclick özelliği ekledik!
+                        cell.append(`<div class="note-indicator" data-custom-title="${item.note}" onclick="openNoteModal(event, '${dayDate}')"><i class="bi bi-sticky-fill" style="font-size:0.5rem; margin-top:1px;"></i></div>`);
+                    }
+                }
+            });
+        });
+    }
+
+    // Güne Tıklayınca Baloncuğu Açma
+    $(document).on('click', '.day-cell:not(.empty-day)', function(e) {
+        if ($(e.target).hasClass('mood-dot')) return; // Baloncuğun içindeki renge tıklandıysa menüyü kapatma
+        
+        $('.mood-popup').removeClass('show'); // Açık olanları kapat
+        
+        if (activePopupDay !== this) {
+            $(this).find('.mood-popup').addClass('show'); // Tıklananın baloncuğunu aç
+            activePopupDay = this;
+        } else {
+            activePopupDay = null; // Aynı güne tıklanırsa kapanır
+        }
+    });
+
+    // Rengi Seçip Kaydetme (AJAX)
+    // Rengi Seçip Kaydetme veya Temizleme (AJAX)
+    function saveMood(event, dateStr, level) {
+        event.stopPropagation();
+
+        $.post('/Moods/SaveMood', { date: dateStr, level: level }, function(res) {
+            if (res.success) {
+                const cell = $(`#day-${dateStr}`);
+
+                // Her durumda eski renkleri sil
+                cell.removeClass('has-mood mood-1 mood-2 mood-3 mood-4 mood-5');
+
+                // Eğer temizleme (0) değilse yeni rengi ekle
+                if (level > 0) {
+                    cell.addClass(`has-mood mood-${level}`);
+                }
+
+                // Baloncuğu kapat
+                $('.mood-popup').removeClass('show');
+                activePopupDay = null;
+
+                // Grafikleri canlı güncelle
+                if ($('#analyticsPeriod').val() === 'current') {
+                    updateChart(currentDate.getFullYear(), currentDate.getMonth() + 1);
+                } else {
+                    updateChart();
+                }
+            }
+        });
+    }
+
+    let moodChart = null;
+
+    // CSS'teki renklerin aynısı (İleride değiştirirsen burayı da güncellersin)
+    const chartColors = ['#c084fc', '#fca5a5', '#fde047', '#7dd3fc', '#86efac'];
+
+    function updateChart(year, month) {
+        let url = '/Moods/GetChartData';
+        if (year && month) {
+            url += `?year=${year}&month=${month}`;
+        }
+
+        $.get(url, function(data) {
+            const counts = [0, 0, 0, 0, 0];
+            data.forEach(item => { counts[item.level - 1] = item.count; });
+
+            let total = counts.reduce((a, b) => a + b, 0);
+            $('#totalDaysText').text(total);
+
+            // --- YENİ EKLENEN KISIM: DİNAMİK ÖZET MESAJI ---
+            const summaryBox = $('#moodSummaryBox');
+            if (total === 0) {
+                summaryBox.slideUp();
+            } else {
+                let maxCount = -1;
+                let dominantIndices = [];
+
+                counts.forEach((c, i) => {
+                    if (c > maxCount) {
+                        maxCount = c;
+                        dominantIndices = [i];
+                    } else if (c === maxCount && maxCount > 0) {
+                        dominantIndices.push(i);
+                    }
+                });
+
+                let sTitle = "", sText = "", sIcon = "", sColor = "";
+
+                if (dominantIndices.length > 1) {
+                    let allPositive = dominantIndices.every(i => i === 3 || i === 4);
+                    let allNegative = dominantIndices.every(i => i === 0 || i === 1);
+
+                    if (allPositive) {
+                        sTitle = "Positive Vibes!";
+                        sText = "You've been radiating good energy. Keep nurturing whatever is making you feel this way!";
+                        sIcon = "bi-brightness-high-fill";
+                        sColor = "#10b981";
+                    } else if (allNegative) {
+                        sTitle = "Be Kind to Yourself";
+                        sText = "It looks like it's been a heavy period. Don't hesitate to take a step back and rest. You've got this.";
+                        sIcon = "bi-cloud-rain-heavy-fill";
+                        sColor = "#3b82f6";
+                    } else {
+                        sTitle = "Mixed Feelings";
+                        sText = "A month of varying emotions. Experiencing contrasting feelings is completely normal, embrace the balance.";
+                        sIcon = "bi-yin-yang";
+                        sColor = "#8b5cf6";
+                    }
+                } else {
+                    let dominantIndex = dominantIndices[0];
+                    if (dominantIndex === 4 || dominantIndex === 3) {
+                        sTitle = "Positive Vibes!";
+                        sText = "You've been radiating good energy. Keep nurturing whatever is making you feel this way!";
+                        sIcon = "bi-brightness-high-fill";
+                        sColor = "#10b981";
+                    } else if (dominantIndex === 2) {
+                        sTitle = "A Balanced Pace";
+                        sText = "Things seem pretty steady. A neutral period is a great time to recharge, reflect and rest.";
+                        sIcon = "bi-cloud-sun-fill";
+                        sColor = "#eab308";
+                    } else {
+                        sTitle = "Be Kind to Yourself";
+                        sText = "It looks like it's been a heavy period. Don't hesitate to take a step back and rest. You've got this.";
+                        sIcon = "bi-cloud-rain-heavy-fill";
+                        sColor = "#3b82f6";
+                    }
+                }
+
+                $('#summaryTitle').text(sTitle);
+                $('#summaryText').text(sText);
+                $('#summaryIcon').attr('class', `bi ${sIcon} fs-3 me-3`).css('color', sColor);
+                summaryBox.slideDown();
+            }
+            // -----------------------------------------------
+
+            // SAĞ TARAFTAKİ LİSTEYİ OLUŞTUR
+            const labels = ["Awful", "Bad", "Meh", "Good", "Rad"];
+            let statsHtml = '';
+
+            if (total === 0) {
+                statsHtml = `<div class="text-muted text-center italic-desc mt-4">No echoes found here yet.</div>`;
+            } else {
+                counts.forEach((count, index) => {
+                    if (count > 0) {
+                        let pct = Math.round((count / total) * 100);
+                        statsHtml += `
+                        <div class="stat-card">
+                            <div class="d-flex align-items-center">
+                                <div class="stat-dot" style="background-color: ${chartColors[index]}"></div>
+                                <span class="fw-bold text-dark" style="font-size: 0.95rem;">${labels[index]}</span>
+                            </div>
+                            <div class="text-end">
+                                <span class="fw-bold" style="color: ${chartColors[index]}; font-size: 1.1rem;">${pct}%</span>
+                                <small class="text-muted d-block" style="font-size: 0.7rem; margin-top:-2px;">${count} day(s)</small>
+                            </div>
+                        </div>`;
+                    }
+                });
+            }
+            $('#moodStatsList').html(statsHtml);
+
+            // GRAFİĞİ GÜNCELLE VEYA ÇİZ
+            if (moodChart) {
+                moodChart.data.datasets[0].data = counts;
+                moodChart.update();
+            } else {
+                const ctx = document.getElementById('moodChart').getContext('2d');
+                moodChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: counts,
+                            backgroundColor: chartColors,
+                            borderWidth: 0,
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1d3557',
+                                padding: 12,
+                                titleFont: { family: "'Segoe UI', sans-serif", size: 13 },
+                                bodyFont: { family: "'Segoe UI', sans-serif", size: 13, weight: '500' },
+                                cornerRadius: 10,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        let value = context.raw || 0;
+                                        let percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                        return ` ${label}: ${value} day(s) (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // Dropdown (All Time / Current Month) değiştiğinde
+    $('#analyticsPeriod').on('change', function() {
+        if ($(this).val() === 'all') {
+            updateChart(); // Parametresiz çağırırsak "All Time" çalışır
+        } else {
+            updateChart(currentDate.getFullYear(), currentDate.getMonth() + 1); // Sadece o ay
+        }
+    });
+
+
+    // Not Penceresini (SweetAlert) Açma ve Kaydetme
+    function openNoteModal(event, dateStr) {
+        event.stopPropagation(); // Baloncuğun hemen kapanmasını engelle
+        $('.mood-popup').removeClass('show'); // Baloncuğu kapat
+        activePopupDay = null;
+
+        const cell = $(`#day-${dateStr}`);
+        const currentNote = cell.attr('data-note') || ''; // Eski notu al
+
+        // Tarihi güzel formata çevir (Örn: 15 May 2026)
+        const dateObj = new Date(dateStr);
+        const niceDate = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        Swal.fire({
+            title: 'Note for ' + niceDate,
+            input: 'textarea',
+            inputValue: currentNote,
+            inputPlaceholder: 'Write down your thoughts for this day...',
+            showCancelButton: true,
+            confirmButtonColor: '#1d3557',
+            confirmButtonText: 'Save Note',
+            customClass: {
+                input: 'custom-input' // Bizim form tasarımlarına uysun
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Notu kaydet
+                $.post('/Moods/SaveNote', { date: dateStr, note: result.value }, function(res) {
+                    if (res.success) {
+                        // İşlem bitince takvimi yenile (Renk değişmiş olabilir vs.)
+                        renderCalendar(currentDate);
+
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Note saved successfully!',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    }
+                });
+            }
+        });
+    }
+</script>

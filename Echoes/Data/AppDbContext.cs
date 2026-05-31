@@ -14,4 +14,6 @@ public class AppDbContext : DbContext
     
     // Letters tablosu
     public DbSet<Letters> Letters { get; set; }
+    
+    public DbSet<DailyMood> DailyMoods { get; set; }
 }
