@@ -1,0 +1,114 @@
+﻿@{
+    ViewData["Title"] = "Time Capsule";
+    var drafts = ViewBag.Drafts as List<Echoes.Models.Letters>;
+    var sealedLetters = ViewBag.Sealed as List<Echoes.Models.Letters>;
+    var unsealedLetters = ViewBag.Unsealed as List<Echoes.Models.Letters>;
+}
+
+<style>
+    /* --- Memories sayfasından birebir alınan class'lar --- */
+    .tab-container { background: #e2e8f0; border-radius: 12px; padding: 6px; display: inline-flex; gap: 8px; }
+    
+    /* Button olarak kullandığımız için default border ve background'ı siliyoruz */
+    .tab-item { padding: 10px 24px; border-radius: 12px; text-decoration: none; color: #4a4a4a; font-weight: 600; transition: 0.2s; border: none; background: transparent; }
+    .tab-item.active { background: #a8dadc; color: #1d3557 !important; }
+
+    .btn-main { background: #1d3557; color: white; border-radius: 12px; padding: 12px 28px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+    .btn-main:hover { background: #000; transform: scale(1.05); color: white; }
+
+    .italic-desc { font-style: italic; font-size: 0.75rem; color: #94a3b8; display: block; margin-top: 2px; margin-bottom: 8px; padding-left: 4px; }
+</style>
+
+<div class="container-fluid py-4">
+    
+    <!-- SEKMELER -->
+    <div class="text-center mb-5">
+        <div class="tab-container shadow-sm" role="tablist">
+            <button class="tab-item active" id="drafts-tab" data-bs-toggle="pill" data-bs-target="#drafts" type="button" role="tab">Drafts</button>
+            <button class="tab-item" id="sealed-tab" data-bs-toggle="pill" data-bs-target="#sealed" type="button" role="tab">Sealed</button>
+            <button class="tab-item" id="unsealed-tab" data-bs-toggle="pill" data-bs-target="#unsealed" type="button" role="tab">Unsealed</button>
+        </div>
+    </div>
+
+    <div class="tab-content" id="letterTabsContent">
+        
+        <!-- DRAFTS -->
+        <div class="tab-pane fade show active" id="drafts" role="tabpanel">
+            
+            <!-- BEYAZ BİLGİ KARTI -->
+            <div class="glass-panel p-4 mb-5" style="border-radius: 12px; background: white; border: 1px solid #edf2f7;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="fw-bold mb-1">Drafts</h2>
+                        <p class="text-muted small mb-0">Your unfinished thoughts are safely resting here.</p>
+                    </div>
+                    <button class="btn-main" id="openModalBtn"><i class="bi bi-plus-lg me-2"></i>Write a Letter</button>
+                </div>
+            </div>
+
+            <!-- BOŞ DURUM (Empty State) -->
+            <div class="row">
+                @if(!drafts.Any()) { 
+                    <div class="col-12 text-center py-5">
+                        <i class="bi bi-cloud-slash fs-1 text-muted opacity-25"></i>
+                        <p class="text-muted mt-3 italic-desc">No drafts waiting...</p>
+                    </div>
+                }
+                else { 
+                    <div class="col-12 mb-3"><p class="text-muted italic-desc">You have @drafts.Count unfinished letter(s).</p></div> 
+                }
+            </div>
+        </div>
+
+        <!-- SEALED -->
+        <div class="tab-pane fade" id="sealed" role="tabpanel">
+            <div class="p-4 mb-5" style="border-radius: 12px; background: white; border: 1px solid #edf2f7;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="fw-bold mb-1">Sealed</h2>
+                        <p class="text-muted small mb-0">Letters locked away, waiting for their rightful time.</p>
+                    </div>
+                    <button class="btn-main"><i class="bi bi-plus-lg me-2"></i>Write a Letter</button>
+                </div>
+            </div>
+
+            <div class="row">
+                @if(!sealedLetters.Any()) { 
+                    <div class="col-12 text-center py-5">
+                        <i class="bi bi-cloud-slash fs-1 text-muted opacity-25"></i>
+                        <p class="text-muted mt-3 italic-desc">No sealed letters waiting...</p>
+                    </div>
+                }
+                else { 
+                    <div class="col-12 mb-3"><p class="text-muted italic-desc">You have @sealedLetters.Count sealed letter(s).</p></div> 
+                }
+            </div>
+        </div>
+
+        <!-- UNSEALED -->
+        <div class="tab-pane fade" id="unsealed" role="tabpanel">
+            <div class="p-4 mb-5" style="border-radius: 12px; background: white; border: 1px solid #edf2f7;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="fw-bold mb-1">Unsealed</h2>
+                        <p class="text-muted small mb-0">Open letters and memories that have passed the test of time.</p>
+                    </div>
+                    <button class="btn-main"><i class="bi bi-plus-lg me-2"></i>Write a Letter</button>
+                </div>
+            </div>
+
+            <div class="row">
+                @if(!unsealedLetters.Any()) { 
+                    <div class="col-12 text-center py-5">
+                        <i class="bi bi-cloud-slash fs-1 text-muted opacity-25"></i>
+                        <p class="text-muted mt-3 italic-desc">No unsealed letters yet...</p>
+                    </div>
+                }
+                else { 
+                    <div class="col-12 mb-3"><p class="text-muted italic-desc">You have @unsealedLetters.Count open letter(s).</p></div> 
+                }
+            </div>
+        </div>
+
+    </div>
+</div>
