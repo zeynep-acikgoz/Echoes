@@ -1,15 +1,13 @@
 ﻿@{
-    ViewData["Title"] = "Time Capsule";
-    var drafts = ViewBag.Drafts as List<Echoes.Models.Letters>;
-    var sealedLetters = ViewBag.Sealed as List<Echoes.Models.Letters>;
-    var unsealedLetters = ViewBag.Unsealed as List<Echoes.Models.Letters>;
+ViewData["Title"] = "Time Capsule";
+var drafts = ViewBag.Drafts as List<Echoes.Models.Letters>;
+var sealedLetters = ViewBag.Sealed as List<Echoes.Models.Letters>;
+var unsealedLetters = ViewBag.Unsealed as List<Echoes.Models.Letters>;
 }
 
 <style>
-    /* --- Memories sayfasından birebir alınan class'lar --- */
+    /* --- SEKMELER VE BUTONLAR --- */
     .tab-container { background: #e2e8f0; border-radius: 12px; padding: 6px; display: inline-flex; gap: 8px; }
-    
-    /* Button olarak kullandığımız için default border ve background'ı siliyoruz */
     .tab-item { padding: 10px 24px; border-radius: 12px; text-decoration: none; color: #4a4a4a; font-weight: 600; transition: 0.2s; border: none; background: transparent; }
     .tab-item.active { background: #a8dadc; color: #1d3557 !important; }
 
@@ -17,11 +15,64 @@
     .btn-main:hover { background: #000; transform: scale(1.05); color: white; }
 
     .italic-desc { font-style: italic; font-size: 0.75rem; color: #94a3b8; display: block; margin-top: 2px; margin-bottom: 8px; padding-left: 4px; }
+
+    /* --- KART TASARIMLARI (ARKADA KALMA SORUNUNA KESİN ÇÖZÜM) --- */
+    .letter-card {
+        background: white;
+        border: 1px solid #edf2f7;
+        border-radius: 20px;
+        padding: 24px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        cursor: pointer;
+        overflow: visible;
+        z-index: 1; /* Normalde arkada durur */
+    }
+
+    .letter-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
+        z-index: 5; /* Fare üzerine gelince biraz öne çıkar */
+    }
+
+    /* İŞTE SİHİRLİ KOD: Eğer menü açıldıysa (.show), bu kartı her şeyin EN ÜSTÜNE çıkar! */
+    .letter-card:has(.show) {
+        z-index: 50 !important;
+    }
+
+    .dropdown-menu {
+        z-index: 1050;
+    }
+
+    /* Taşıyıcıların menüyü kırpmaması için görünür yapıyoruz */
+    .row, .tab-content, .tab-pane {
+        overflow: visible !important;
+    }
+
+    .letter-title { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    .letter-preview { font-size: 0.9rem; color: #64748b; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; flex-grow: 1; margin-bottom: 16px; }
+    .letter-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 16px; font-size: 0.8rem; color: #94a3b8; }
+    .locked-card { background: #f8fafc; border: 1px dashed #cbd5e1; text-align: center; justify-content: center; align-items: center; cursor: not-allowed; }
+    .locked-card:hover { transform: none; box-shadow: none !important; }
+    .ready-to-open { border: 2px solid #a7dfd6; background: white; }
+    .ready-to-open:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(167, 223, 214, 0.2) !important; }
+
+    .shake-badge {
+        position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; font-size: 0.75rem; font-weight: bold; padding: 4px 10px; border-radius: 20px; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+        animation: shake 2s infinite cubic-bezier(.36,.07,.19,.97) both;
+    }
+    @@keyframes shake {
+        10%, 90% { transform: translate3d(-1px, 0, 0); }
+        20%, 80% { transform: translate3d(2px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+        40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
 </style>
 
 <div class="container-fluid py-4">
-    
-    <!-- SEKMELER -->
     <div class="text-center mb-5">
         <div class="tab-container shadow-sm" role="tablist">
             <button class="tab-item active" id="drafts-tab" data-bs-toggle="pill" data-bs-target="#drafts" type="button" role="tab">Drafts</button>
@@ -29,86 +80,244 @@
             <button class="tab-item" id="unsealed-tab" data-bs-toggle="pill" data-bs-target="#unsealed" type="button" role="tab">Unsealed</button>
         </div>
     </div>
-
     <div class="tab-content" id="letterTabsContent">
-        
-        <!-- DRAFTS -->
+
         <div class="tab-pane fade show active" id="drafts" role="tabpanel">
-            
-            <!-- BEYAZ BİLGİ KARTI -->
-            <div class="glass-panel p-4 mb-5" style="border-radius: 12px; background: white; border: 1px solid #edf2f7;">
+            <div class="glass-panel p-4 mb-5 mx-auto" style="border-radius: 12px; background: white; border: 1px solid #edf2f7; max-width: 1100px;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h2 class="fw-bold mb-1">Drafts</h2>
                         <p class="text-muted small mb-0">Your unfinished thoughts are safely resting here.</p>
                     </div>
-                    <button class="btn-main" id="openModalBtn"><i class="bi bi-plus-lg me-2"></i>Write a Letter</button>
+                    <button class="btn-main write-letter-btn"><i class="bi bi-plus-lg me-2"></i>Write a Letter</button>
                 </div>
             </div>
-
-            <!-- BOŞ DURUM (Empty State) -->
-            <div class="row">
-                @if(!drafts.Any()) { 
-                    <div class="col-12 text-center py-5">
-                        <i class="bi bi-cloud-slash fs-1 text-muted opacity-25"></i>
-                        <p class="text-muted mt-3 italic-desc">No drafts waiting...</p>
-                    </div>
+            <div class="row mx-auto" style="max-width: 1100px;">
+                @if(!drafts.Any()) {
+                <div class="col-12 text-center py-5">
+                    <i class="bi bi-cloud-slash fs-1 text-muted opacity-25"></i>
+                    <p class="text-muted mt-3 italic-desc">No drafts waiting...</p>
+                </div>
                 }
-                else { 
-                    <div class="col-12 mb-3"><p class="text-muted italic-desc">You have @drafts.Count unfinished letter(s).</p></div> 
+                else {
+                @foreach(var item in drafts) {
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="letter-card" onclick="goToLetter(event, '/Letters/Write/@item.Id')">
+                        <div class="position-absolute dropdown" style="top: 15px; right: 15px;">
+
+                            <button class="btn btn-sm text-muted shadow-none border-0 p-2" type="button" data-bs-toggle="dropdown" data-bs-offset="15,5">
+                                <i class="bi bi-three-dots-vertical fs-5"></i>
+                            </button>
+
+                            <ul class="dropdown-menu shadow-sm border-0" style="border-radius: 12px; font-size: 0.9rem;">
+                                <li>
+                                    <button class="dropdown-item py-2" type="button" onclick="window.location.href='/Letters/Write/@item.Id'">
+                                        <i class="bi bi-pencil-square me-2 text-primary"></i> Edit Letter
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item py-2 text-success" type="button" onclick="sealLetterPrompt(event, @item.Id)">
+                                        <i class="bi bi-lock-fill me-2"></i> Seal Letter
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button class="dropdown-item text-danger py-2" type="button" onclick="deleteLetter(event, @item.Id)">
+                                        <i class="bi bi-trash3 me-2"></i> Delete
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                        <h4 class="letter-title pe-4 mt-1">@(string.IsNullOrWhiteSpace(item.Title) ? "Untitled" : item.Title)</h4>
+                        <p class="letter-preview">@(string.IsNullOrWhiteSpace(item.Content) ? "No content yet..." : item.Content)</p>
+                        <div class="letter-footer mt-auto">
+                            <span><i class="bi bi-pen me-1"></i>Draft</span>
+                            <span>@item.CreatedDate.ToString("dd MMM yyyy")</span>
+                        </div>
+                    </div>
+                </div>
+                }
                 }
             </div>
         </div>
 
-        <!-- SEALED -->
         <div class="tab-pane fade" id="sealed" role="tabpanel">
-            <div class="p-4 mb-5" style="border-radius: 12px; background: white; border: 1px solid #edf2f7;">
+            <div class="p-4 mb-5 mx-auto" style="border-radius: 12px; background: white; border: 1px solid #edf2f7; max-width: 1100px;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h2 class="fw-bold mb-1">Sealed</h2>
                         <p class="text-muted small mb-0">Letters locked away, waiting for their rightful time.</p>
                     </div>
-                    <button class="btn-main"><i class="bi bi-plus-lg me-2"></i>Write a Letter</button>
+                    <button class="btn-main write-letter-btn"><i class="bi bi-plus-lg me-2"></i>Write a Letter</button>
                 </div>
             </div>
-
-            <div class="row">
-                @if(!sealedLetters.Any()) { 
-                    <div class="col-12 text-center py-5">
-                        <i class="bi bi-cloud-slash fs-1 text-muted opacity-25"></i>
-                        <p class="text-muted mt-3 italic-desc">No sealed letters waiting...</p>
-                    </div>
+            <div class="row mx-auto" style="max-width: 1100px;">
+                @if(!sealedLetters.Any()) {
+                <div class="col-12 text-center py-5">
+                    <i class="bi bi-cloud-slash fs-1 text-muted opacity-25"></i>
+                    <p class="text-muted mt-3 italic-desc">No sealed letters waiting...</p>
+                </div>
                 }
-                else { 
-                    <div class="col-12 mb-3"><p class="text-muted italic-desc">You have @sealedLetters.Count sealed letter(s).</p></div> 
+                else {
+                @foreach(var item in sealedLetters) {
+                var isReadyToOpen = item.UnlockDate.HasValue && item.UnlockDate.Value.Date <= DateTime.Now.Date;
+                <div class="col-md-6 col-lg-4 mb-4">
+                    @if(isReadyToOpen) {
+                    <div class="letter-card ready-to-open text-center" onclick="window.location.href='/Letters/Write/@item.Id'">
+                        <div class="shake-badge">Open Me!</div>
+                        <h4 class="letter-title mt-3"><i class="bi bi-envelope-paper-heart fs-1 text-danger"></i></h4>
+                        <h5 class="fw-bold text-dark mt-2">Ready to Open</h5>
+                        <p class="text-muted small mt-1">The time has come to read your echoes.</p>
+                        <div class="letter-footer mt-auto w-100">
+                            <span>From: @item.CreatedDate.ToString("MMM yyyy")</span>
+                            <span class="fw-bold text-success">Today!</span>
+                        </div>
+                    </div>
+                    } else {
+                    <div class="letter-card locked-card">
+                        <i class="bi bi-lock-fill fs-1 text-muted mb-3 opacity-50"></i>
+                        <h5 class="fw-bold text-muted opacity-75">Sealed</h5>
+                        <div class="mt-4 pt-3 border-top w-100" style="border-color: #cbd5e1 !important;">
+                            <small class="text-muted fw-bold d-block">Unlocks on</small>
+                            <span class="text-dark fw-bold">@item.UnlockDate.Value.ToString("dd MMMM yyyy")</span>
+                        </div>
+                    </div>
+                    }
+                </div>
+                }
                 }
             </div>
         </div>
 
-        <!-- UNSEALED -->
         <div class="tab-pane fade" id="unsealed" role="tabpanel">
-            <div class="p-4 mb-5" style="border-radius: 12px; background: white; border: 1px solid #edf2f7;">
+            <div class="p-4 mb-5 mx-auto" style="border-radius: 12px; background: white; border: 1px solid #edf2f7; max-width: 1100px;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h2 class="fw-bold mb-1">Unsealed</h2>
                         <p class="text-muted small mb-0">Open letters and memories that have passed the test of time.</p>
                     </div>
-                    <button class="btn-main"><i class="bi bi-plus-lg me-2"></i>Write a Letter</button>
+                    <button class="btn-main write-letter-btn"><i class="bi bi-plus-lg me-2"></i>Write a Letter</button>
                 </div>
             </div>
-
-            <div class="row">
-                @if(!unsealedLetters.Any()) { 
-                    <div class="col-12 text-center py-5">
-                        <i class="bi bi-cloud-slash fs-1 text-muted opacity-25"></i>
-                        <p class="text-muted mt-3 italic-desc">No unsealed letters yet...</p>
-                    </div>
+            <div class="row mx-auto" style="max-width: 1100px;">
+                @if(!unsealedLetters.Any()) {
+                <div class="col-12 text-center py-5">
+                    <i class="bi bi-cloud-slash fs-1 text-muted opacity-25"></i>
+                    <p class="text-muted mt-3 italic-desc">No unsealed letters yet...</p>
+                </div>
                 }
-                else { 
-                    <div class="col-12 mb-3"><p class="text-muted italic-desc">You have @unsealedLetters.Count open letter(s).</p></div> 
+                else {
+                @foreach(var item in unsealedLetters) {
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="letter-card" onclick="goToLetter(event, '/Letters/Write/@item.Id')">
+                        <div class="position-absolute dropdown" style="top: 15px; right: 15px;">
+
+                            <button class="btn btn-sm text-muted shadow-none border-0 p-2" type="button" data-bs-toggle="dropdown" data-bs-offset="15,5">
+                                <i class="bi bi-three-dots-vertical fs-5"></i>
+                            </button>
+
+                            <ul class="dropdown-menu shadow-sm border-0" style="border-radius: 12px; font-size: 0.9rem;">
+                                <li>
+                                    <button class="dropdown-item py-2" type="button" onclick="window.location.href='/Letters/Write/@item.Id'">
+                                        <i class="bi bi-book me-2 text-primary"></i> Read / Edit
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item py-2 text-success" type="button" onclick="sealLetterPrompt(event, @item.Id)">
+                                        <i class="bi bi-lock-fill me-2"></i> Seal Again
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button class="dropdown-item text-danger py-2" type="button" onclick="deleteLetter(event, @item.Id)">
+                                        <i class="bi bi-trash3 me-2"></i> Delete
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                        <h4 class="letter-title pe-4 mt-1">@(string.IsNullOrWhiteSpace(item.Title) ? "Untitled" : item.Title)</h4>
+                        <p class="letter-preview">@(string.IsNullOrWhiteSpace(item.Content) ? "No content yet..." : item.Content)</p>
+                        <div class="letter-footer mt-auto">
+                            <span class="text-success"><i class="bi bi-unlock-fill me-1"></i>Unsealed</span>
+                            <span>@item.CreatedDate.ToString("dd MMM yyyy")</span>
+                        </div>
+                    </div>
+                </div>
+                }
                 }
             </div>
         </div>
 
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+@section Scripts {
+<script>
+    $(document).ready(function () {
+        $('.write-letter-btn').on('click', function (e) {
+            e.preventDefault();
+            let btn = $(this);
+            let originalText = btn.html();
+            btn.html('<i class="bi bi-hourglass-split me-2"></i>Opening...');
+            $.post('/Letters/CreateDraft', function (response) {
+                if (response.success) {
+                    window.location.href = '/Letters/Write/' + response.id;
+                } else {
+                    btn.html(originalText);
+                    alert("Something went wrong while creating the draft.");
+                }
+            });
+        });
+    });
+
+    function goToLetter(e, url) {
+        if (e.target.closest('.dropdown')) {
+            return;
+        }
+        window.location.href = url;
+    }
+
+    function sealLetterPrompt(e, id) {
+        e.stopPropagation();
+        let today = new Date().toISOString().split('T')[0];
+        Swal.fire({
+            title: 'Seal this letter? 🔒',
+            text: 'Choose a date to unlock it in the future.',
+            input: 'date',
+            inputAttributes: { min: today },
+            showCancelButton: true,
+            confirmButtonColor: '#1d3557',
+            confirmButtonText: 'Seal It',
+            preConfirm: (date) => {
+                if (!date) { Swal.showValidationMessage('Please select a date'); }
+                return date;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('/Letters/SealLetter', { id: id, unlockDate: result.value }, function (res) {
+                    if (res.success) {
+                        location.reload();
+                    } else {
+                        Swal.fire('Error', 'Could not seal the letter.', 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    function deleteLetter(e, id) {
+        e.stopPropagation();
+        if (confirm("Are you sure you want to delete this letter? This cannot be undone.")) {
+            $.post('/Letters/Delete', { id: id }, function (res) {
+                if (res.success) {
+                    location.reload();
+                } else {
+                    alert("Something went wrong while deleting the letter.");
+                }
+            });
+        }
+    }
+</script>
+}

@@ -1,0 +1,274 @@
+﻿@model Echoes.Models.Letters
+@{
+Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Write a Letter - Echoes</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+
+    <style>
+        body {
+            background-color: #ffffff;
+            color: #37352f;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* --- Üst Kontrol Barı --- */
+        .zen-header {
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between; /* Sol ve Sağ olarak ikiye böler */
+            align-items: center;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s;
+        }
+        .zen-header.scrolled { border-bottom: 1px solid #ededed; }
+
+        /* Sol Grup (Back Butonu + Tarih) */
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .back-btn {
+            color: #9b9a97;
+            text-decoration: none;
+            font-weight: 500;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .back-btn:hover { color: #37352f; }
+
+        /* Tarih Seçici Bölümü */
+        .date-picker-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* Sola yaslı */
+            border-left: 1px solid #ededed;
+            padding-left: 24px;
+        }
+
+        .info-text {
+            font-size: 0.75rem;
+            color: #9b9a97;
+            margin-bottom: 4px; /* Tarihin üstünde */
+            font-style: italic;
+        }
+
+        .date-input-container {
+            display: inline-flex;
+            align-items: center;
+            background: #f7f7f5;
+            border-radius: 8px;
+            padding: 6px 12px;
+            transition: 0.2s;
+        }
+        .date-input-container:hover { background: #ededed; }
+
+        .custom-date {
+            border: none;
+            background: transparent;
+            color: #37352f;
+            font-size: 0.9rem;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .clear-date {
+            background: transparent;
+            border: none;
+            color: #9b9a97;
+            cursor: pointer;
+            display: none;
+            font-size: 1.2rem;
+            line-height: 1;
+            padding: 0 0 0 8px;
+        }
+        .clear-date:hover { color: #eb5757; }
+
+        /* YENİ: Lacivert ve Büyük Buton */
+        .btn-action {
+            background: #1d3557; /* Memories Laciverti */
+            color: white;
+            border: none;
+            padding: 12px 28px; /* Daha büyük ve dolgun */
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1.05rem; /* Yazı boyutu büyüdü */
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-action:hover {
+            background: #142742; /* Daha koyu lacivert */
+            transform: translateY(-2px);
+            color: white;
+        }
+
+        /* --- NOTION TARZI EDİTÖR ALANI --- */
+        .editor-container {
+            max-width: 800px;
+            margin: 60px auto 100px auto;
+            padding: 0 20px;
+        }
+
+        .written-date { color: #9b9a97; font-size: 1rem; margin-bottom: 24px; display: block; }
+        .title-input { width: 100%; border: none; outline: none; font-size: 3rem; font-weight: 800; color: #37352f; background: transparent; margin-bottom: 16px; resize: none; overflow: hidden; line-height: 1.2; padding: 0; }
+        .title-input::placeholder { color: #e0e0e0; }
+        .content-input { width: 100%; border: none; outline: none; font-size: 1.15rem; line-height: 1.7; color: #37352f; background: transparent; resize: none; overflow: hidden; min-height: 50vh; padding: 0; }
+        .content-input::placeholder { color: #e0e0e0; }
+        .save-status { font-size: 0.8rem; color: #9b9a97; position: fixed; bottom: 20px; right: 30px; opacity: 0; transition: opacity 0.3s; }
+        .save-status.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<div class="zen-header" id="header">
+
+    <div class="header-left">
+        <a href="/Letters/Index" class="back-btn">
+            <i class="bi bi-arrow-left me-2"></i>Back to Capsule
+        </a>
+
+        <div class="date-picker-group">
+            <span class="info-text">💡 Set a date to lock, or leave blank to open anytime.</span>
+            <div class="date-input-container">
+                <input type="date" id="unlockDate" class="custom-date" value="@(Model.UnlockDate?.ToString("yyyy-MM-dd"))" />
+                <button type="button" class="clear-date" id="clearDateBtn" title="Clear Date">&times;</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-action" id="saveActionBtn">
+        <i class="bi bi-journal-text" id="btnIcon"></i>
+        <span id="btnText">Save Letter</span>
+    </button>
+</div>
+
+<div class="editor-container">
+    <span class="written-date">Written on @Model.CreatedDate.ToString("MMMM d, yyyy")</span>
+    <input type="hidden" id="letterId" value="@Model.Id" />
+    <textarea id="titleInput" class="title-input auto-expand" placeholder="Untitled" rows="1" autofocus>@Model.Title</textarea>
+    <textarea id="contentInput" class="content-input auto-expand" placeholder="Start writing your echoes...">@Model.Content</textarea>
+</div>
+
+<div class="save-status" id="saveStatus">Draft saved automatically</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+
+        const $title = $('#titleInput');
+        const $content = $('#contentInput');
+        const $date = $('#unlockDate');
+        const $clearBtn = $('#clearDateBtn');
+        const $actionBtn = $('#saveActionBtn');
+        const $btnText = $('#btnText');
+        const $btnIcon = $('#btnIcon');
+        const $saveStatus = $('#saveStatus');
+
+        function autoExpand(element) {
+            element.style.height = 'auto';
+            element.style.height = element.scrollHeight + 'px';
+        }
+
+        $('.auto-expand').on('input', function() {
+            autoExpand(this);
+            triggerAutoSave();
+        });
+
+        autoExpand($title[0]);
+        autoExpand($content[0]);
+
+        // Buton rengi zaten lacivert, sadece yazıyı ve ikonu değiştiriyoruz
+        function updateDateLogic() {
+            if ($date.val()) {
+                $clearBtn.show();
+                $btnText.text('Seal Letter');
+                $btnIcon.attr('class', 'bi bi-lock-fill');
+            } else {
+                $clearBtn.hide();
+                $btnText.text('Save Letter');
+                $btnIcon.attr('class', 'bi bi-journal-text');
+            }
+        }
+
+        updateDateLogic();
+
+        $date.on('change', function() {
+            updateDateLogic();
+            triggerAutoSave();
+        });
+
+        $clearBtn.on('click', function() {
+            $date.val('');
+            updateDateLogic();
+            triggerAutoSave();
+        });
+
+        let timeoutId;
+        function triggerAutoSave() {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(performSave, 1000);
+        }
+
+        function performSave(isFinal = false) {
+            const data = {
+                Id: $('#letterId').val(),
+                Title: $title.val(),
+                Content: $content.val(),
+                UnlockDate: $date.val() ? $date.val() : null, // Boşsa null gönder ki hata vermesin
+                IsDraft: !isFinal
+            };
+
+            $.post('/Letters/SaveLetterAuto', data, function(res) {
+                if(res.success) {
+                    if(isFinal) {
+                        // Eğer butona basıldıysa kaydettikten SONRA yönlendir
+                        window.location.href = '/Letters/Index';
+                    } else {
+                        // Sadece otomatik kayıt işlemiyse alttaki yazıyı göster
+                        $saveStatus.addClass('show');
+                        setTimeout(() => $saveStatus.removeClass('show'), 2000);
+                    }
+                }
+            });
+        }
+
+        $actionBtn.on('click', function() {
+            // Tıklanınca butonu kitleyip bekletiyoruz
+            $(this).prop('disabled', true).html('<i class="bi bi-hourglass-split me-2"></i>Saving...');
+            performSave(true);
+        });
+
+        $actionBtn.on('click', function() {
+            performSave(true);
+            window.location.href = '/Letters/Index';
+        });
+
+        $(window).scroll(function() {
+            if ($(window).scrollTop() > 10) {
+                $('#header').addClass('scrolled');
+            } else {
+                $('#header').removeClass('scrolled');
+            }
+        });
+    });
+</script>
+</body>
+</html>

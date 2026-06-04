@@ -1,7 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Echoes.Data; // Kendi proje ismine göre namespace'i kontrol et
+using Echoes.Data; 
 using Echoes.Models;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Echoes.Controllers
 {
@@ -14,6 +17,7 @@ namespace Echoes.Controllers
             _context = context;
         }
 
+        // Ana Liste Sayfası (3 Sekmeli Görünüm)
         public async Task<IActionResult> Index()
         {
             var allLetters = await _context.Letters.OrderByDescending(l => l.CreatedDate).ToListAsync();
@@ -29,5 +33,86 @@ namespace Echoes.Controllers
 
             return View();
         }
+
+        // YENİ: Butona tıklandığında anında boş bir taslak oluşturup ID'sini döner
+        [HttpPost]
+        public async Task<IActionResult> CreateDraft()
+        {
+            var draft = new Letters
+            {
+                Title = "", // Başlangıçta boş bırakıyoruz, kullanıcı Notion ekranında dolduracak
+                Content = "",
+                CreatedDate = DateTime.Now,
+                IsDraft = true, // Taslak olarak kilitliyoruz
+                IsOpened = false
+            };
+
+            _context.Letters.Add(draft);
+            await _context.SaveChangesAsync();
+
+            // Oluşan taslağın ID'sini frontend'e yolluyoruz ki doğru sayfayı açsın
+            return Json(new { success = true, id = draft.Id });
+        }
+
+        // YENİ: Taslağı Notion tarzı tam ekran editörde açacak olan sayfa
+        [HttpGet]
+        public async Task<IActionResult> Write(int id)
+        {
+            var letter = await _context.Letters.FindAsync(id);
+            
+            if (letter == null)
+            {
+                return RedirectToAction("Index"); // Mektup bulunamazsa ana sayfaya geri atmak için
+            }
+
+            return View(letter); // Write.cshtml sayfasına mektup verisiyle git go go go
+        }
+        
+        
+        [HttpPost]
+        public async Task<IActionResult> SaveLetterAuto(Letters updatedLetter)
+        {
+            var letter = await _context.Letters.FindAsync(updatedLetter.Id);
+            if (letter == null) return Json(new { success = false });
+
+            // Sadece doluysa güncelle, Notion tarzı editör boş bırakmaya da izin verir
+            letter.Title = updatedLetter.Title ?? "";
+            letter.Content = updatedLetter.Content ?? "";
+            letter.UnlockDate = updatedLetter.UnlockDate;
+            letter.IsDraft = updatedLetter.IsDraft;
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+        
+        // YENİ: Mektup Silme Metodu
+        [HttpPost]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var letter = await _context.Letters.FindAsync(id);
+            if (letter != null)
+            {
+                _context.Letters.Remove(letter);
+                await _context.SaveChangesAsync();
+                return Json(new { success = true });
+            }
+            return Json(new { success = false });
+        }
+        
+        // YENİ: Dışarıdan Hızlı Mühürleme Metodu
+        [HttpPost]
+        public async Task<IActionResult> SealLetter(int id, DateTime unlockDate)
+        {
+            var letter = await _context.Letters.FindAsync(id);
+            if (letter != null)
+            {
+                letter.IsDraft = false; // Artık taslak değil
+                letter.UnlockDate = unlockDate; // Seçilen tarihi ata
+                await _context.SaveChangesAsync();
+                return Json(new { success = true });
+            }
+            return Json(new { success = false });
+        }
+        
     }
 }
