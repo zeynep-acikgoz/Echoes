@@ -1,8 +1,8 @@
 ﻿@{
-ViewData["Title"] = "Time Capsule";
-var drafts = ViewBag.Drafts as List<Echoes.Models.Letters>;
-var sealedLetters = ViewBag.Sealed as List<Echoes.Models.Letters>;
-var unsealedLetters = ViewBag.Unsealed as List<Echoes.Models.Letters>;
+    ViewData["Title"] = "Time Capsule";
+    var drafts = ViewBag.Drafts as List<Echoes.Models.Letters>;
+    var sealedLetters = ViewBag.Sealed as List<Echoes.Models.Letters>;
+    var unsealedLetters = ViewBag.Unsealed as List<Echoes.Models.Letters>;
 }
 
 <style>
@@ -163,7 +163,7 @@ var unsealedLetters = ViewBag.Unsealed as List<Echoes.Models.Letters>;
                 var isReadyToOpen = item.UnlockDate.HasValue && item.UnlockDate.Value.Date <= DateTime.Now.Date;
                 <div class="col-md-6 col-lg-4 mb-4">
                     @if(isReadyToOpen) {
-                    <div class="letter-card ready-to-open text-center" onclick="window.location.href='/Letters/Write/@item.Id'">
+                    <div class="letter-card ready-to-open text-center" onclick="unsealAndOpen(event, @item.Id, '/Letters/Write/@item.Id')">
                         <div class="shake-badge">Open Me!</div>
                         <h4 class="letter-title mt-3"><i class="bi bi-envelope-paper-heart fs-1 text-danger"></i></h4>
                         <h5 class="fw-bold text-dark mt-2">Ready to Open</h5>
@@ -254,6 +254,8 @@ var unsealedLetters = ViewBag.Unsealed as List<Echoes.Models.Letters>;
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 @section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
 <script>
     $(document).ready(function () {
         $('.write-letter-btn').on('click', function (e) {
@@ -277,6 +279,39 @@ var unsealedLetters = ViewBag.Unsealed as List<Echoes.Models.Letters>;
             return;
         }
         window.location.href = url;
+    }
+
+    // YENİ EKLENEN AÇMA VE KONFETİ FONKSİYONU
+    function unsealAndOpen(e, id, url) {
+        e.stopPropagation(); // Diğer tıklamaları engelle
+        
+        let card = $(e.currentTarget);
+        card.css('pointer-events', 'none'); // Çift tıklamayı önle
+
+        // Konfeti efekti
+        confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 },
+            colors: ['#a8dadc', '#1d3557', '#e63946', '#f1faee'],
+            disableForReducedMotion: true
+        });
+
+        // Backend'e mektubun açıldığını bildir
+        $.post('/Letters/UnsealLetter', { id: id }, function (res) {
+            if (res.success) {
+                // Konfeti şöleni bitene kadar hafif bekle ve yönlendir
+                setTimeout(() => {
+                    window.location.href = url;
+                }, 1200);
+            } else {
+                card.css('pointer-events', 'auto');
+                Swal.fire('Oops...', res.message || 'Could not unseal the letter.', 'error');
+            }
+        }).fail(function() {
+            card.css('pointer-events', 'auto');
+            Swal.fire('Error', 'Server connection failed.', 'error');
+        });
     }
 
     function sealLetterPrompt(e, id) {

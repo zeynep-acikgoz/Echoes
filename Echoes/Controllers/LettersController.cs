@@ -114,5 +114,28 @@ namespace Echoes.Controllers
             return Json(new { success = false });
         }
         
+        [HttpPost]
+        public async Task<IActionResult> UnsealLetter(int id)
+        {
+            var letter = await _context.Letters.FindAsync(id);
+    
+            if (letter == null) 
+            {
+                return Json(new { success = false, message = "Letter not found." });
+            }
+
+            // Mektubun açılma zamanının gelip gelmediğini son bir kez güvenliğe alıyoruz
+            if (letter.UnlockDate.HasValue && letter.UnlockDate.Value.Date <= DateTime.Now.Date)
+            {
+                letter.IsOpened = true; // Mektup artık açıldı!
+                _context.Update(letter);
+                await _context.SaveChangesAsync();
+        
+                return Json(new { success = true });
+            }
+
+            return Json(new { success = false, message = "This letter is not ready to be opened yet." });
+        }
+        
     }
 }
