@@ -1,0 +1,283 @@
+﻿@{
+    ViewData["Title"] = "Analytics";
+}
+
+<style>
+    
+    .text-pastel-lilac { color: #cdb4db !important; }
+    .text-pastel-pink { color: #ffc8dd !important; }
+    .text-pastel-blue { color: #bde0fe !important; }
+    .text-pastel-green { color: #b7e4c7 !important; }
+    .text-pastel-yellow { color: #f4d35e !important; }
+    .text-pastel-gray { color: #94a3b8 !important; }
+    .text-main-turq { color: #a8dadc !important; }
+    .text-main-dark { color: #1d3557 !important; }
+
+    .analytics-card {
+        background: white;
+        border: 1px solid #edf2f7;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        height: 100%;
+        transition: transform 0.3s ease;
+    }
+    .analytics-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1d3557;
+        margin-bottom: 20px;
+    }
+
+    /* HEATMAP (Isı Haritası) CSS'i */
+    .heatmap-wrapper { width: 100%; overflow-x: auto; padding-bottom: 10px; }
+    .heatmap-grid { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column; gap: 4px; }
+    .heatmap-cell { width: 14px; height: 14px; border-radius: 3px; background-color: #f1f5f9; transition: transform 0.1s; }
+    .heatmap-cell:hover { transform: scale(1.3); border: 1px solid #1d3557; }
+    .level-1 { background-color: #d1e8e2; }
+    .level-2 { background-color: #a8dadc; }
+    .level-3 { background-color: #457b9d; }
+    .level-4 { background-color: #1d3557; }
+    
+    /* ÖZEL TOGGLE BUTON TASARIMI */
+    .btn-toggle-view {
+        color: #64748b;
+        border-color: #e2e8f0;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .btn-check:checked + .btn-toggle-view {
+        background-color: #cdb4db; /* Lila temamıza uygun */
+        border-color: #cdb4db;
+        color: white;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="mb-5">
+        <h2 class="fw-bold mb-1 text-main-dark">Analytics</h2>
+        <p class="text-muted small">Discover the patterns in your echoes.</p>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="analytics-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="card-title m-0"><i class="bi bi-graph-up me-2 text-pastel-lilac"></i> Monthly Mood Flow</h4>
+                    
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="btn-group shadow-sm" role="group">
+                            <input type="radio" class="btn-check" name="viewToggle" id="btnDaily" autocomplete="off" checked onchange="toggleMoodView('daily')">
+                            <label class="btn btn-toggle-view px-3 py-1" for="btnDaily">Daily</label>
+
+                            <input type="radio" class="btn-check" name="viewToggle" id="btnWeekly" autocomplete="off" onchange="toggleMoodView('weekly')">
+                            <label class="btn btn-toggle-view px-3 py-1" for="btnWeekly">Weekly</label>
+                        </div>
+                        
+                        <div>
+                            <button class="btn btn-sm btn-light border-0"><i class="bi bi-chevron-left"></i></button>
+                            <span class="mx-2 fw-bold text-muted">June 2026</span>
+                            <button class="btn btn-sm btn-light border-0"><i class="bi bi-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="moodLineChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4 mb-md-0">
+            <div class="analytics-card">
+                <h4 class="card-title"><i class="bi bi-bar-chart-fill me-2 text-pastel-green"></i> Top Categories (Good Vibes)</h4>
+                <canvas id="goodCategoriesChart" height="150"></canvas>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="analytics-card">
+                <h4 class="card-title"><i class="bi bi-bar-chart-fill me-2 text-pastel-pink"></i> Challenging Categories</h4>
+                <canvas id="badCategoriesChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4 mb-md-0">
+            <div class="analytics-card">
+                <h4 class="card-title"><i class="bi bi-people-fill me-2 text-pastel-blue"></i> Energy Givers</h4>
+                <canvas id="goodPeopleChart" height="150"></canvas>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="analytics-card">
+                <h4 class="card-title"><i class="bi bi-people-fill me-2 text-pastel-gray"></i> Energy Drainers</h4>
+                <canvas id="badPeopleChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="analytics-card">
+                <h4 class="card-title"><i class="bi bi-calendar3 me-2 text-main-turq"></i> Activity Heatmap</h4>
+                <p class="text-muted small mb-4">Every memory, letter, and mood tracked throughout the year.</p>
+                <div class="heatmap-wrapper">
+                    <div class="heatmap-grid" id="activityHeatmap"></div>
+                </div>
+                <div class="d-flex justify-content-end align-items-center mt-3 small text-muted">
+                    <span class="me-2">Less</span>
+                    <div class="heatmap-cell mx-1"></div>
+                    <div class="heatmap-cell mx-1 level-1"></div>
+                    <div class="heatmap-cell mx-1 level-2"></div>
+                    <div class="heatmap-cell mx-1 level-3"></div>
+                    <div class="heatmap-cell mx-1 level-4"></div>
+                    <span class="ms-2">More</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        Chart.defaults.font.family = "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(29, 53, 87, 0.9)';
+        Chart.defaults.plugins.tooltip.padding = 10;
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+
+        const colors = { lilac: '#cdb4db', pink: '#ffc8dd', blue: '#bde0fe', green: '#b7e4c7', yellow: '#fcf6bd', turq: '#a8dadc' };
+
+        // --- 1. MOOD LINE CHART (GÜNLÜK & HAFTALIK DİNAMİK YAPI - Şimdilik Sahte Veri) ---
+        const dailyLabels = Array.from({length: 31}, (_, i) => i + 1);
+        const dailyData = Array.from({length: 31}, () => Math.floor(Math.random() * 5) + 1);
+        const weeklyLabels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+        const weeklyData = [3, 4, 2, 5]; 
+
+        let moodChart = new Chart(document.getElementById('moodLineChart'), {
+            type: 'line',
+            data: {
+                labels: dailyLabels,
+                datasets: [{
+                    label: 'Mood Level',
+                    data: dailyData,
+                    borderColor: colors.lilac,
+                    backgroundColor: 'rgba(205, 180, 219, 0.2)',
+                    borderWidth: 3,
+                    tension: 0.4, 
+                    fill: true,
+                    pointBackgroundColor: colors.lilac,
+                    pointRadius: 3, 
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                layout: { padding: { top: 20 } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { 
+                        min: 1, max: 5, 
+                        ticks: { stepSize: 1, callback: function(value) {
+                            if(value === 1) return 'Awful';
+                            if(value === 2) return 'Bad';
+                            if(value === 3) return 'Meh';
+                            if(value === 4) return 'Good';
+                            if(value === 5) return 'Awesome';
+                            return '';
+                        }}
+                    }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        window.toggleMoodView = function(viewType) {
+            if (viewType === 'daily') {
+                moodChart.data.labels = dailyLabels;
+                moodChart.data.datasets[0].data = dailyData;
+                moodChart.options.elements.point.radius = 3; 
+            } else {
+                moodChart.data.labels = weeklyLabels;
+                moodChart.data.datasets[0].data = weeklyData;
+                moodChart.options.elements.point.radius = 6; 
+            }
+            moodChart.update(); 
+        };
+
+        // --- 2. KATEGORİ GRAFİKLERİ (BAŞLANGIÇTA BOŞ) ---
+        let goodCatChart = new Chart(document.getElementById('goodCategoriesChart'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: colors.green, borderRadius: 6 }] },
+            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } }, x: { grid: { display: false } } } }
+        });
+
+        let badCatChart = new Chart(document.getElementById('badCategoriesChart'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: colors.pink, borderRadius: 6 }] },
+            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } }, x: { grid: { display: false } } } }
+        });
+
+        // --- 3. KİŞİ (PERSON) GRAFİKLERİ (BAŞLANGIÇTA BOŞ) ---
+        let goodPeopleChart = new Chart(document.getElementById('goodPeopleChart'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: colors.blue, borderRadius: 6 }] },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } }, y: { grid: { display: false } } } }
+        });
+
+        let badPeopleChart = new Chart(document.getElementById('badPeopleChart'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: '#cbd5e1', borderRadius: 6 }] },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } }, y: { grid: { display: false } } } }
+        });
+
+        // --- GERÇEK VERİLERİ BACKEND'DEN ÇEKME (AJAX) ---
+        $(document).ready(function () {
+            
+            // 1. Kategorileri Çek
+            $.get('/Analytics/GetCategoryStats', function (res) {
+                if (res.success) {
+                    // İyi Kategorileri Güncelle
+                    goodCatChart.data.labels = res.good.map(item => item.label);
+                    goodCatChart.data.datasets[0].data = res.good.map(item => item.count);
+                    goodCatChart.update();
+
+                    // Kötü Kategorileri Güncelle
+                    badCatChart.data.labels = res.bad.map(item => item.label);
+                    badCatChart.data.datasets[0].data = res.bad.map(item => item.count);
+                    badCatChart.update();
+                }
+            });
+
+            // 2. Kişileri Çek
+            $.get('/Analytics/GetPeopleStats', function (res) {
+                if (res.success) {
+                    // Enerji Verenleri Güncelle
+                    goodPeopleChart.data.labels = res.good.map(item => item.label);
+                    goodPeopleChart.data.datasets[0].data = res.good.map(item => item.count);
+                    goodPeopleChart.update();
+
+                    // Enerji Emenleri Güncelle
+                    badPeopleChart.data.labels = res.bad.map(item => item.label);
+                    badPeopleChart.data.datasets[0].data = res.bad.map(item => item.count);
+                    badPeopleChart.update();
+                }
+            });
+
+        });
+
+        // --- HEATMAP ---
+        const heatmapContainer = document.getElementById('activityHeatmap');
+        for (let i = 0; i < 365; i++) {
+            let cell = document.createElement('div');
+            cell.classList.add('heatmap-cell');
+            let randomLevel = Math.floor(Math.random() * 8); 
+            if (randomLevel > 0 && randomLevel <= 4) cell.classList.add('level-' + randomLevel);
+            cell.title = `Activity level: ${randomLevel <= 4 ? randomLevel : 0}`;
+            heatmapContainer.appendChild(cell);
+        }
+    </script>
+}
