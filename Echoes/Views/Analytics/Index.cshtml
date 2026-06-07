@@ -78,10 +78,12 @@
                             <label class="btn btn-toggle-view px-3 py-1" for="btnWeekly">Weekly</label>
                         </div>
                         
-                        <div>
-                            <button class="btn btn-sm btn-light border-0"><i class="bi bi-chevron-left"></i></button>
-                            <span class="mx-2 fw-bold text-muted">June 2026</span>
-                            <button class="btn btn-sm btn-light border-0"><i class="bi bi-chevron-right"></i></button>
+                        <div class="d-flex align-items-center">
+                            <button id="prevMonthBtn" class="btn btn-sm btn-light bg-transparent border-0"><i class="bi bi-chevron-left"></i></button>
+    
+                            <span id="monthLabel" class="fw-bold mx-2">June 2026</span>
+    
+                            <button id="nextMonthBtn" class="btn btn-sm btn-light bg-transparent border-0"><i class="bi bi-chevron-right"></i></button>
                         </div>
                     </div>
                 </div>
@@ -141,9 +143,11 @@
         </div>
     </div>
 </div>
+
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // --- GRAFİK GENEL AYARLARI ---
         Chart.defaults.font.family = "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
         Chart.defaults.color = '#94a3b8';
         Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(29, 53, 87, 0.9)';
@@ -152,11 +156,11 @@
 
         const colors = { lilac: '#cdb4db', pink: '#ffc8dd', blue: '#bde0fe', green: '#b7e4c7', yellow: '#fcf6bd', turq: '#a8dadc' };
 
-        // --- 1. MOOD LINE CHART (GÜNLÜK & HAFTALIK DİNAMİK YAPI - Şimdilik Sahte Veri) ---
-        const dailyLabels = Array.from({length: 31}, (_, i) => i + 1);
-        const dailyData = Array.from({length: 31}, () => Math.floor(Math.random() * 5) + 1);
+        // --- 1. MOOD LINE CHART (BAŞLANGIÇ DEĞİŞKENLERİ) ---
+        const dailyLabels = [];
+        const dailyData = [];
         const weeklyLabels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-        const weeklyData = [3, 4, 2, 5]; 
+        const weeklyData = []; 
 
         let moodChart = new Chart(document.getElementById('moodLineChart'), {
             type: 'line',
@@ -186,7 +190,7 @@
                             if(value === 2) return 'Bad';
                             if(value === 3) return 'Meh';
                             if(value === 4) return 'Good';
-                            if(value === 5) return 'Awesome';
+                            if(value === 5) return 'Rad';
                             return '';
                         }}
                     }
@@ -195,7 +199,13 @@
             }
         });
 
+        // --- HAFIZA DEĞİŞKENİMİZ (Varsayılan olarak daily başlıyor) ---
+        let currentMoodView = 'daily';
+
+        // Daily/Weekly Görünüm Değiştirme Fonksiyonu
         window.toggleMoodView = function(viewType) {
+            currentMoodView = viewType; // Hangi butona basıldıysa hafızaya al
+            
             if (viewType === 'daily') {
                 moodChart.data.labels = dailyLabels;
                 moodChart.data.datasets[0].data = dailyData;
@@ -208,7 +218,7 @@
             moodChart.update(); 
         };
 
-        // --- 2. KATEGORİ GRAFİKLERİ (BAŞLANGIÇTA BOŞ) ---
+        // --- 2. KATEGORİ GRAFİKLERİ ---
         let goodCatChart = new Chart(document.getElementById('goodCategoriesChart'), {
             type: 'bar',
             data: { labels: [], datasets: [{ data: [], backgroundColor: colors.green, borderRadius: 6 }] },
@@ -221,7 +231,7 @@
             options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } }, x: { grid: { display: false } } } }
         });
 
-        // --- 3. KİŞİ (PERSON) GRAFİKLERİ (BAŞLANGIÇTA BOŞ) ---
+        // --- 3. KİŞİ (PERSON) GRAFİKLERİ ---
         let goodPeopleChart = new Chart(document.getElementById('goodPeopleChart'), {
             type: 'bar',
             data: { labels: [], datasets: [{ data: [], backgroundColor: colors.blue, borderRadius: 6 }] },
@@ -234,18 +244,50 @@
             options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } }, y: { grid: { display: false } } } }
         });
 
-        // --- GERÇEK VERİLERİ BACKEND'DEN ÇEKME (AJAX) ---
+        // --- MOOD FLOW DİNAMİK AY DEĞİŞTİRME FONKSİYONU ---
+        let targetDate = new Date(); 
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        function loadMoodFlowData() {
+            let year = targetDate.getFullYear();
+            let month = targetDate.getMonth() + 1; 
+
+            $('#monthLabel').text(`${monthNames[targetDate.getMonth()]} ${year}`);
+
+            $.get(`/Analytics/GetMoodFlowStats?year=${year}&month=${month}`, function (res) {
+                if (res.success) {
+                    dailyLabels.length = 0;
+                    for (let i = 1; i <= res.daysInMonth; i++) dailyLabels.push(i);
+
+                    dailyData.splice(0, dailyData.length, ...res.daily);
+                    weeklyData.splice(0, weeklyData.length, ...res.weekly);
+
+                    // --- HAFIZAYA GÖRE GRAFİĞİ GÜNCELLE ---
+                    if (currentMoodView === 'daily') {
+                        moodChart.data.labels = dailyLabels;
+                        moodChart.data.datasets[0].data = dailyData;
+                        moodChart.options.elements.point.radius = 3;
+                    } else {
+                        moodChart.data.labels = weeklyLabels;
+                        moodChart.data.datasets[0].data = weeklyData;
+                        moodChart.options.elements.point.radius = 6;
+                    }
+                    
+                    moodChart.update();
+                }
+            });
+        }
+
+        // --- SAYFA YÜKLENDİĞİNDE ÇALIŞACAK TÜM AJAX İŞLEMLERİ ---
         $(document).ready(function () {
             
             // 1. Kategorileri Çek
             $.get('/Analytics/GetCategoryStats', function (res) {
                 if (res.success) {
-                    // İyi Kategorileri Güncelle
                     goodCatChart.data.labels = res.good.map(item => item.label);
                     goodCatChart.data.datasets[0].data = res.good.map(item => item.count);
                     goodCatChart.update();
 
-                    // Kötü Kategorileri Güncelle
                     badCatChart.data.labels = res.bad.map(item => item.label);
                     badCatChart.data.datasets[0].data = res.bad.map(item => item.count);
                     badCatChart.update();
@@ -255,29 +297,61 @@
             // 2. Kişileri Çek
             $.get('/Analytics/GetPeopleStats', function (res) {
                 if (res.success) {
-                    // Enerji Verenleri Güncelle
                     goodPeopleChart.data.labels = res.good.map(item => item.label);
                     goodPeopleChart.data.datasets[0].data = res.good.map(item => item.count);
                     goodPeopleChart.update();
 
-                    // Enerji Emenleri Güncelle
                     badPeopleChart.data.labels = res.bad.map(item => item.label);
                     badPeopleChart.data.datasets[0].data = res.bad.map(item => item.count);
                     badPeopleChart.update();
                 }
             });
 
-        });
+            // 3. Mood Flow (Aylık Akış) Başlangıç Yüklemesi ve Tuş Olayları
+            loadMoodFlowData();
 
-        // --- HEATMAP ---
-        const heatmapContainer = document.getElementById('activityHeatmap');
-        for (let i = 0; i < 365; i++) {
-            let cell = document.createElement('div');
-            cell.classList.add('heatmap-cell');
-            let randomLevel = Math.floor(Math.random() * 8); 
-            if (randomLevel > 0 && randomLevel <= 4) cell.classList.add('level-' + randomLevel);
-            cell.title = `Activity level: ${randomLevel <= 4 ? randomLevel : 0}`;
-            heatmapContainer.appendChild(cell);
-        }
+            $('#prevMonthBtn').click(function () {
+                targetDate.setMonth(targetDate.getMonth() - 1);
+                loadMoodFlowData();
+            });
+
+            $('#nextMonthBtn').click(function () {
+                targetDate.setMonth(targetDate.getMonth() + 1);
+                loadMoodFlowData();
+            });
+
+            // 4. Heatmap (Isı Haritası) Çek
+            $.get('/Analytics/GetHeatmapStats', function (res) {
+                if (res.success) {
+                    const heatmapContainer = document.getElementById('activityHeatmap');
+                    heatmapContainer.innerHTML = ''; 
+
+                    let today = new Date();
+                    for (let i = 364; i >= 0; i--) {
+                        let cellDate = new Date(today);
+                        cellDate.setDate(today.getDate() - i);
+                        
+                        let offset = cellDate.getTimezoneOffset() * 60000;
+                        let localISOTime = (new Date(cellDate.getTime() - offset)).toISOString().split('T')[0];
+                        
+                        let count = res.heatmap[localISOTime] || 0; 
+
+                        let cell = document.createElement('div');
+                        cell.classList.add('heatmap-cell');
+
+                        if (count === 1) cell.classList.add('level-1');
+                        else if (count === 2) cell.classList.add('level-2');
+                        else if (count === 3) cell.classList.add('level-3');
+                        else if (count >= 4) cell.classList.add('level-4');
+
+                        let displayDate = cellDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        cell.title = `${count} activities on ${displayDate}`;
+
+                        heatmapContainer.appendChild(cell);
+                    }
+                }
+            });
+
+        });
     </script>
 }

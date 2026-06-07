@@ -18,7 +18,6 @@ namespace Echoes.Models
         [Required]
         public MoodLevel Level { get; set; } 
 
-        // BU SATIRIN ORADA OLDUĞUNDAN EMİN OL:
         public string? Note { get; set; } 
     }
 }
